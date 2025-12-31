@@ -44,6 +44,7 @@ def export_device_to_templates(export_device: ExportDevice, export_location: Pat
 
     # TODO handle duplicate file names due to device name clashes
     file_name = f"{export_device.device_id[:5]}-{export_device.device.name}-{export_device.profile_wrapper.profile_name}.svg"
+    file_name = utils.sanitize_filename(file_name, export_location)
     save_template(result, file_name, export_location)
 
 
@@ -55,6 +56,7 @@ def save_template(template_data, file_name, export_path):
 
 
 def populate_template(export_device: ExportDevice) -> str:
+    print("Populating template...")
     """Manipulates template_data to replace known keys with data from Device_"""
     modified_template_data = export_device.template.raw_data
 
@@ -82,7 +84,7 @@ def populate_template(export_device: ExportDevice) -> str:
     modified_template_data = replace_template_date_string(modified_template_data)
 
     modified_template_data = replace_unused_keys(modified_template_data)
-
+    print("Template population complete.")
     return modified_template_data
 
 
