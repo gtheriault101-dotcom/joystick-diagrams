@@ -83,33 +83,74 @@ class FalconBMSParser:
     def _parse_text_format(self, content: str) -> dict[str, Any]:
         """Parse Falcon BMS key file format
         
-        BMS key files contain command mappings in the format:
+        BMS key files contain command mappings organized by device sections marked with:
+        #======== DEVICE NAME ========
+        
+        Followed by mappings in the format:
         CommandName DeviceID Unknown HexKeyCode Mod1 Mod2 Mod3 Mode "Description"
         
         Example:
+        #======== WINWING Orion Joystick Base 2  JGRIP-F16 ========
         SimOverHeat 312 0 0x3B 1 0 0 1 "TEST: FIRE & OHEAT DETECT Button - Hold"
         """
+        import re
+        
         data = {"profiles": [{"profile_name": "Falcon BMS", "devices": {}}]}
         devices = {}
+        current_device_name = None
+        current_device_uuid = None
+        
+        # Pattern to match device headers
+        device_header_pattern = r'#=+\s+(.+?)\s+=+#?'
         
         for line in content.strip().split('\n'):
-            line = line.strip()
+            line_stripped = line.strip()
             
-            # Skip empty lines and comment lines
-            if not line or line.startswith('#'):
+            # Skip empty lines
+            if not line_stripped:
+                continue
+            
+            # Check for device header lines
+            if line_stripped.startswith('#'):
+                # Try to extract device name from header
+                match = re.match(device_header_pattern, line_stripped)
+                if match:
+                    device_name = match.group(1).strip()
+                    # Skip generic section headers that aren't devices
+                    if device_name and not device_name.startswith('==='):
+                        # Extract base device name (remove POV variants)
+                        # e.g., "WINWING ... : POV #0" -> "WINWING ..."
+                        base_device_name = re.sub(r'\s*:\s*POV\s*#\d+\s*$', '', device_name, flags=re.IGNORECASE)
+                        
+                        current_device_name = base_device_name
+                        # Generate UUID based on base device name
+                        current_device_uuid = str(uuid5(FALCON_BMS_NAMESPACE, f"device_{base_device_name}"))
+                        
+                        # Create device entry if not exists
+                        if current_device_uuid not in devices:
+                            devices[current_device_uuid] = {
+                                "guid": current_device_uuid,
+                                "name": base_device_name,
+                                "inputs": {
+                                    "buttons": [],
+                                    "axis": [],
+                                    "axis_slider": [],
+                                    "hats": []
+                                }
+                            }
                 continue
             
             # Skip lines with REM: prefix (remarks)
-            if 'REM:' in line:
+            if 'REM:' in line_stripped:
                 continue
             
             # Skip section headers (SimDoNothing with FFFFFFFF key)
-            if 'SimDoNothing' in line and '0XFFFFFFFF' in line.upper():
+            if 'SimDoNothing' in line_stripped and '0XFFFFFFFF' in line_stripped.upper():
                 continue
             
             try:
                 # Split the line - format: Command DeviceID Unknown HexKey Mod1 Mod2 Mod3 Mode "Description"
-                parts = line.split('"')
+                parts = line_stripped.split('"')
                 if len(parts) < 2:
                     continue
                 
@@ -117,7 +158,7 @@ class FalconBMSParser:
                 params = parts[0].strip().split()
                 
                 if len(params) < 4:
-                    _logger.debug(f"Skipping line with insufficient fields: {line}")
+                    _logger.debug(f"Skipping line with insufficient fields: {line_stripped}")
                     continue
                 
                 command_name = params[0]
@@ -125,15 +166,20 @@ class FalconBMSParser:
                 hex_key = params[3]
                 modifiers = params[4:8] if len(params) >= 8 else []
                 
-                # Use device_id to generate a consistent UUID
-                device_uuid = str(uuid5(FALCON_BMS_NAMESPACE, f"device_{device_id}"))
-                device_name = f"Falcon BMS Device {device_id}"
+                # Determine which device this belongs to
+                target_device_uuid = current_device_uuid
+                target_device_name = current_device_name
+                
+                # If no current device, use the device_id to create one
+                if not target_device_uuid:
+                    target_device_name = f"Falcon BMS Device {device_id}"
+                    target_device_uuid = str(uuid5(FALCON_BMS_NAMESPACE, f"device_{device_id}"))
                 
                 # Ensure device exists
-                if device_uuid not in devices:
-                    devices[device_uuid] = {
-                        "guid": device_uuid,
-                        "name": device_name,
+                if target_device_uuid not in devices:
+                    devices[target_device_uuid] = {
+                        "guid": target_device_uuid,
+                        "name": target_device_name,
                         "inputs": {
                             "buttons": [],
                             "axis": [],
@@ -155,14 +201,14 @@ class FalconBMSParser:
                     }
                     
                     # Add to buttons (default to buttons, could extend for axes/hats)
-                    devices[device_uuid]["inputs"]["buttons"].append(input_data)
+                    devices[target_device_uuid]["inputs"]["buttons"].append(input_data)
                     
                 except (ValueError, TypeError) as e:
                     _logger.warning(f"Failed to parse hex key {hex_key}: {e}")
                     continue
                     
             except (IndexError, ValueError) as e:
-                _logger.debug(f"Failed to parse line: {line} - {e}")
+                _logger.debug(f"Failed to parse line: {line_stripped} - {e}")
                 continue
         
         # Convert devices dict to list
@@ -172,6 +218,7 @@ class FalconBMSParser:
             _logger.warning("No valid input mappings found in BMS key file")
             return {"profiles": []}
         
+        _logger.info(f"Parsed {len(devices)} devices from BMS key file")
         return data
 
     def process_profiles(self) -> ProfileCollection:
