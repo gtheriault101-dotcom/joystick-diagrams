@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Falcon BMS Plugin Logo
+    "BMS" in bold blue lettering with a top-down F-16 silhouette superimposed.
+    Primary blue: #1a3a8f (deep navy for text)
+    Light blue:   #5b9bd5 (lighter blue for the aircraft silhouette)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="300" height="150">
+
+  <!-- Background (transparent/white) -->
+  <rect width="300" height="150" fill="white" rx="8"/>
+
+  <!-- "BMS" bold blue text, large and prominent -->
+  <text
+    x="150"
+    y="100"
+    font-family="Arial Black, Arial, sans-serif"
+    font-weight="900"
+    font-size="90"
+    fill="#1a3a8f"
+    text-anchor="middle"
+    letter-spacing="4"
+  >BMS</text>
+
+  <!--
+      F-16 top-down silhouette in lighter blue, superimposed over the text.
+      The F-16 is characterized by:
+        - A narrow, elongated fuselage
+        - Cropped delta wings (blended wing-body)
+        - A single vertical tail fin
+        - Two small horizontal stabilizers at the rear
+        - A chin inlet under the nose
+      The shape is drawn as a polygon path, centered on the logo.
+      Scale and position chosen to overlay the "BMS" text dramatically.
+  -->
+  <g transform="translate(150, 75) scale(0.95)" opacity="0.72">
+
+    <!-- Main fuselage: narrow, pointed nose, widening body, tapering tail -->
+    <!-- Top-down view: nose points UP (negative Y), tail points DOWN (positive Y) -->
+    <path
+      d="
+        M 0,-68
+        C 2,-65 4,-58 5,-50
+        L 6,-38
+        C 6,-38 28,-20 42,0
+        C 50,12 50,20 42,28
+        L 28,32
+        L 18,50
+        L 10,58
+        L 6,65
+        L 4,68
+        L 0,70
+        L -4,68
+        L -6,65
+        L -10,58
+        L -18,50
+        L -28,32
+        L -42,28
+        C -50,20 -50,12 -42,0
+        C -28,-20 -6,-38 -6,-38
+        L -5,-50
+        C -4,-58 -2,-65 0,-68
+        Z
+      "
+      fill="#5b9bd5"
+    />
+
+    <!-- Left wing: large cropped delta extending to the left -->
+    <path
+      d="
+        M -6,-20
+        L -80,18
+        L -60,28
+        L -28,22
+        Z
+      "
+      fill="#5b9bd5"
+    />
+
+    <!-- Right wing: mirror of left wing -->
+    <path
+      d="
+        M 6,-20
+        L 80,18
+        L 60,28
+        L 28,22
+        Z
+      "
+      fill="#5b9bd5"
+    />
+
+    <!-- Left horizontal stabilizer (rear, small) -->
+    <path
+      d="
+        M -18,42
+        L -46,52
+        L -38,60
+        L -14,54
+        Z
+      "
+      fill="#5b9bd5"
+    />
+
+    <!-- Right horizontal stabilizer (rear, small) -->
+    <path
+      d="
+        M 18,42
+        L 46,52
+        L 38,60
+        L 14,54
+        Z
+      "
+      fill="#5b9bd5"
+    />
+
+    <!-- Vertical tail fin: single fin, visible from top as a narrow strip -->
+    <rect x="-2" y="50" width="4" height="18" rx="1" fill="#4a87c2"/>
+
+    <!-- Engine nozzle (rear circle) -->
+    <ellipse cx="0" cy="70" rx="5" ry="3" fill="#3a70a8"/>
+
+    <!-- Canopy (cockpit bubble, top-down teardrop shape) -->
+    <ellipse cx="0" cy="-40" rx="5" ry="10" fill="#7ab8e8" opacity="0.7"/>
+
+    <!-- Chin inlet (small rectangle under nose) -->
+    <ellipse cx="0" cy="-28" rx="4" ry="6" fill="#3a70a8" opacity="0.5"/>
+
+  </g>
+
+  <!-- Plugin label subtitle -->
+  <text
+    x="150"
+    y="140"
+    font-family="Arial, sans-serif"
+    font-size="11"
+    fill="#1a3a8f"
+    text-anchor="middle"
+    font-style="italic"
+    opacity="0.7"
+  >Falcon BMS · Joystick Diagrams Plugin</text>
+
+</svg>
