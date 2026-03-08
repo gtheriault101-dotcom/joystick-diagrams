@@ -735,7 +735,8 @@ class FalconBmsPlugin:
         print(f"Falcon BMS Plugin: Parsed {len(profiles)} device profiles.")
         col = ProfileCollection()
         prof = col.create_profile("BMS")
-        prof.devices = {p.name: p for p in profiles}
+        for p in profiles:
+            prof.add_device(p.guid, p.name)
         return col
 
 
