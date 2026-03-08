@@ -47,6 +47,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+from joystick_diagrams.input.profile_collection import ProfileCollection
+import uuid
 
 # ---------------------------------------------------------------------------
 # Logger for the plugin – use the module name so it integrates cleanly with
@@ -162,12 +164,14 @@ class ButtonAssignment:
 
 @dataclass
 class DeviceProfile:
-    """All bindings for one physical device extracted from one XML file."""
-    device_name: str                              # Cleaned device name
-    source_file: Path                             # Original XML path
-    axes: list[AxisAssignment] = field(default_factory=list)
-    povs: list[PovAssignment] = field(default_factory=list)
-    buttons: list[ButtonAssignment] = field(default_factory=list)
+    def __init__(self, name: str, source_file: Path):
+        """All bindings for one physical device extracted from one XML file."""
+        self.source_file: Path  = source_file                           # Original XML path
+        self.axes: list[AxisAssignment] = field(default_factory=list)
+        self.povs: list[PovAssignment] = field(default_factory=list)
+        self.buttons: list[ButtonAssignment] = field(default_factory=list)
+        self.guid: Optional[str] = str(uuid.uuid4())                    # Extracted from filename if possible
+        self.name: Optional[str] = name                      # Optional user-friendly name
 
 
 # ===========================================================================
@@ -340,17 +344,17 @@ def extract_device_name(xml_filename: str) -> str:
         name = re.sub(r"\s*\{[0-9A-Fa-f\-]+\}\.xml$", "", name, flags=re.IGNORECASE)
         return name or xml_filename
 
-    device_name = match.group(1).strip()
+    name = match.group(1).strip()
 
     # Check for known short labels; if found, truncate TO that label.
-    name_upper = device_name.upper()
+    name_upper = name.upper()
     for short_label in DEVICE_SHORT_LABELS:
         if short_label.upper() in name_upper:
             # Return everything from the short label onward in the original string
             idx = name_upper.index(short_label.upper())
-            return device_name[idx:]
+            return name[idx:]
 
-    return device_name
+    return name
 
 
 # ===========================================================================
@@ -373,7 +377,7 @@ class BmsXmlParser:
     def __init__(self, xml_path: Path, auto_key_parser: AutoKeyParser):
         self.xml_path = xml_path
         self.auto_key = auto_key_parser
-        self.device_name = extract_device_name(xml_path.name)
+        self.name = extract_device_name(xml_path.name)
 
     # ------------------------------------------------------------------
     def parse(self) -> Optional[DeviceProfile]:
@@ -395,7 +399,7 @@ class BmsXmlParser:
         root = tree.getroot()  # <JoyAssgn>
 
         profile = DeviceProfile(
-            device_name=self.device_name,
+            name=self.name,
             source_file=self.xml_path,
         )
 
@@ -406,7 +410,7 @@ class BmsXmlParser:
 
         logger.info(
             "Device '%s': %d axes, %d POVs, %d buttons loaded.",
-            self.device_name,
+            self.name,
             len(profile.axes),
             len(profile.povs),
             len([b for b in profile.buttons if b.label]),
@@ -723,13 +727,16 @@ class FalconBmsPlugin:
         )
         return profiles
     
-    def parse(self) -> list[DeviceProfile]:
+    def parse(self) -> ProfileCollection:
         """
         Alias for process() to conform to PluginInterface expectations.
         """
         profiles = self.process()
         print(f"Falcon BMS Plugin: Parsed {len(profiles)} device profiles.")
-        return profiles
+        col = ProfileCollection()
+        prof = col.create_profile("BMS")
+        prof.devices = {p.name: p for p in profiles}
+        return col
 
 
 # ===========================================================================
@@ -805,7 +812,7 @@ def format_profiles_for_joystick_diagrams(
                 user_btn_number = btn.dx_index + BMS_DX_OFFSET
                 device_data["buttons"][user_btn_number] = btn.label
 
-        output[profile.device_name] = device_data
+        output[profile.name] = device_data
 
     return output
 
@@ -859,12 +866,12 @@ def main() -> None:
     print(json.dumps(output, indent=2, ensure_ascii=False))
 
     print(f"\nTotal devices processed: {len(output)}")
-    for device_name, data in output.items():
+    for name, data in output.items():
         btn_count = len(data["buttons"])
         axis_count = len(data["axes"])
         pov_count = sum(len(dirs) for dirs in data["povs"].values())
         print(
-            f"  {device_name}: "
+            f"  {name}: "
             f"{btn_count} buttons, {axis_count} axes, {pov_count} POV directions"
         )
 
