@@ -722,6 +722,14 @@ class FalconBmsPlugin:
             len(profiles),
         )
         return profiles
+    
+    def parse(self) -> list[DeviceProfile]:
+        """
+        Alias for process() to conform to PluginInterface expectations.
+        """
+        profiles = self.process()
+        print(f"Falcon BMS Plugin: Parsed {len(profiles)} device profiles.")
+        return profiles
 
 
 # ===========================================================================
